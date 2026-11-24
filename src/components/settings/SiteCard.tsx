@@ -1,6 +1,32 @@
+import { useEffect, useState } from 'react'
+import { useAuth } from '../../auth/AuthProvider'
+import { cloudEnabled, supabase } from '../../lib/supabase'
 import { saveSettings, useData } from '../../store'
 import type { SiteContent, SiteTestimonial } from '../../types'
 import { PhotoList } from './PhotoList'
+
+/** Dónde se ve la página de esta posada: dominios que Marbit enlazó y dirección corta de la plataforma. */
+function SiteAddress() {
+  const { tenant } = useAuth()
+  const [domains, setDomains] = useState<{ domain: string; status: string }[]>([])
+  const tid = tenant?.id
+  useEffect(() => {
+    if (!supabase || !tid) return
+    let alive = true
+    supabase.from('tenant_domains').select('domain, status').eq('tenant_id', tid).then(({ data }) => { if (alive) setDomains((data ?? []) as { domain: string; status: string }[]) })
+    return () => { alive = false }
+  }, [tid])
+  if (!tenant) return null
+  return (
+    <div className="banner">
+      <strong>Tu página:</strong>{' '}
+      {domains.length === 0 ? <span>aún no tiene dominio propio. Marbit contrata y enlaza el dominio por ti; pídelo cuando lo quieras.</span> : domains.map((d) => (
+        <span key={d.domain}>{d.domain}{d.status === 'activo' ? '' : ` (${d.status})`}{' '}</span>
+      ))}
+      <div className="muted">Dirección corta de la plataforma: {tenant.nickname}</div>
+    </div>
+  )
+}
 
 export function SiteCard() {
   const { settings } = useData()
@@ -12,8 +38,9 @@ export function SiteCard() {
 
   return (
     <section className="card">
-      <h2>Página web (casaelagave.com)</h2>
-      <p className="muted">Lo que edites aquí se publica en la página al sincronizar con el servidor (Respaldo y sincronización).</p>
+      <h2>Página web</h2>
+      {cloudEnabled ? <SiteAddress /> : null}
+      <p className="muted">{cloudEnabled ? 'Lo que edites aquí se publica en tu página en cuanto se sincroniza (el indicador de arriba dice «Al día»).' : 'Lo que edites aquí se publica en la página al sincronizar con el servidor (Respaldo y sincronización).'}</p>
 
       <details className="room-edit">
         <summary>Portada y carrusel</summary>
