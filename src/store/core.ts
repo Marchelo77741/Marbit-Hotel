@@ -4,13 +4,16 @@ import { emptyData, normalizeData } from './defaults'
 
 /** Núcleo del almacenamiento: estado en memoria, guardado en el dispositivo y suscripciones. */
 export const KEY = 'posada-reservaciones:v1'
+/** Con nube, cada posada guarda su copia local en su propia clave (nunca se mezclan datos de dos posadas). */
+let storageKey = KEY
+let blank: () => AppData = emptyData
 
 function load(): AppData {
   try {
-    const txt = localStorage.getItem(KEY)
-    return txt ? normalizeData(JSON.parse(txt)) : emptyData()
+    const txt = localStorage.getItem(storageKey)
+    return txt ? normalizeData(JSON.parse(txt), blank()) : blank()
   } catch {
-    return emptyData()
+    return blank()
   }
 }
 
@@ -61,10 +64,18 @@ export function commit(next: AppData, sync = false) {
   state = sync ? next : track(state, next)
   next = state
   try {
-    localStorage.setItem(KEY, JSON.stringify(next))
+    localStorage.setItem(storageKey, JSON.stringify(next))
   } catch {
     alert('No se pudo guardar en este dispositivo (¿almacenamiento lleno o bloqueado?). Descarga un respaldo.')
   }
+  listeners.forEach((l) => l())
+}
+
+/** Cambia a la copia local de otra posada (tenantId) o a la del modo sin nube (null). */
+export function setScope(tenantId: string | null, blankFor?: () => AppData) {
+  storageKey = tenantId ? `marbit-hotel:data:${tenantId}` : KEY
+  blank = blankFor ?? emptyData
+  state = load()
   listeners.forEach((l) => l())
 }
 
