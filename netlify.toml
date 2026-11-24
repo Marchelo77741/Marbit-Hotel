@@ -5,6 +5,11 @@
 [build.environment]
   NODE_VERSION = "22"
 
+# Sitios públicos por dominio: netlify/edge-functions/sitio.ts (se declara dentro del propio archivo).
+[functions]
+  node_bundler = "esbuild"
+
+# La app es una SPA: cualquier ruta que no sea un archivo abre index.html.
 [[redirects]]
   from = "/*"
   to = "/index.html"
