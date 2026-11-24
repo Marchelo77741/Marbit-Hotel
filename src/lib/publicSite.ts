@@ -1,4 +1,6 @@
 import { addInquiries, getData } from '../store'
+import { getScope } from '../store/core'
+import { cloudEnabled, supabase } from './supabase'
 import type { Inquiry, Room } from '../types'
 import { getRemote, isConfigured, serverCall, failFrom } from './remoteBackup'
 import { nightlyDefault } from './availability'
@@ -7,9 +9,13 @@ import { nightlyDefault } from './availability'
 
 export const PHOTO_MAX_PX = 1600
 
-/** Una foto puede ser un enlace (https://…) o el id de una foto subida al servidor. */
+export const PHOTO_BUCKET = 'tenant-photos'
+
+/** Una foto puede ser un enlace (https://…), una ruta en Supabase (<posada>/<archivo>.jpg) o, en el modo anterior, el id de una foto del servidor. */
 export function photoUrl(ref: string): string {
-  return /^https?:\/\//.test(ref) ? ref : `${getRemote().url}/pub/foto/${ref}.jpg`
+  if (/^https?:\/\//.test(ref)) return ref
+  if (ref.includes('/') && supabase) return supabase.storage.from(PHOTO_BUCKET).getPublicUrl(ref).data.publicUrl
+  return `${getRemote().url}/pub/foto/${ref}.jpg`
 }
 
 /** Reduce la foto (máx. 1600 px) y la convierte a JPEG para que pese poco. */
@@ -30,6 +36,14 @@ export async function shrinkPhoto(file: File): Promise<Blob> {
 }
 
 export async function uploadPhoto(file: File): Promise<string> {
+  const tid = getScope()
+  if (cloudEnabled && supabase && tid) {
+    const blob = await shrinkPhoto(file)
+    const path = `${tid}/${crypto.randomUUID()}.jpg`
+    const { error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, blob, { contentType: 'image/jpeg', cacheControl: '31536000' })
+    if (error) throw new Error('No se pudo subir la foto. Revisa tu conexión e intenta de nuevo.')
+    return path
+  }
   if (!isConfigured()) throw new Error('Primero configura el servidor en Ajustes (Respaldo y sincronización).')
   const blob = await shrinkPhoto(file)
   const res = await serverCall('/fotos', { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: blob }, 60_000)
@@ -38,6 +52,11 @@ export async function uploadPhoto(file: File): Promise<string> {
 }
 
 export async function deletePhoto(id: string): Promise<void> {
+  if (id.includes('/') && supabase) {
+    // solo se borran fotos de la posada activa
+    if (id.startsWith(`${getScope()}/`)) await supabase.storage.from(PHOTO_BUCKET).remove([id]).catch(() => undefined)
+    return
+  }
   if (!isConfigured()) return
   try {
     await serverCall(`/fotos/${id}`, { method: 'DELETE' })

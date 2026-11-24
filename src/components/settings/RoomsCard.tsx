@@ -25,7 +25,7 @@ export function RoomsCard() {
   return (
     <section className="card">
       <h2>Habitaciones</h2>
-      <p className="muted">Aquí editas los datos de cada habitación, sus fotos y cómo se ve en la página web. Las fotos y los cambios se publican al sincronizar con el servidor.</p>
+      <p className="muted">Aquí editas los datos de cada habitación, sus fotos y cómo se ve en la página web. Las fotos y los cambios se publican en cuanto se sincroniza (el indicador de arriba dice «Al día»).</p>
       <div className="rooms-edit">
         {rooms.map((r) => {
           const status = r.status ?? 'disponible'

@@ -79,6 +79,11 @@ export function setScope(tenantId: string | null, blankFor?: () => AppData) {
   listeners.forEach((l) => l())
 }
 
+/** Posada cuya copia local está activa (null = modo sin nube). */
+export function getScope(): string | null {
+  return storageKey === KEY ? null : storageKey.slice('marbit-hotel:data:'.length)
+}
+
 export function useData(): AppData {
   return useSyncExternalStore(
     (cb) => {
