@@ -314,3 +314,31 @@ export function resetSyncState() {
   setStatus({ state: 'idle', lastOk: null, pending: 0, error: null, conflicts: [] })
 }
 
+
+export interface VerifyRow {
+  label: string
+  local: number
+  cloud: number
+}
+
+/** Compara lo que hay en este dispositivo con lo que hay en la nube (cantidades y sumas de dinero). */
+export async function verifyCloud(tid: string): Promise<VerifyRow[]> {
+  const d = getData()
+  const live = (rows: Row[]) => rows.filter((r) => !r.deleted_at)
+  const [rooms, cat, inq, quotes, res, pays] = await Promise.all([
+    fetchAll('rooms', tid, null), fetchAll('catalog_items', tid, null), fetchAll('inquiries', tid, null),
+    fetchAll('quotes', tid, null), fetchAll('reservations', tid, null), fetchAll('payments', tid, null),
+  ])
+  const sum = (l: number[]) => Math.round(l.reduce((a, b) => a + b, 0) * 100) / 100
+  const payments = d.reservations.flatMap((r) => r.payments)
+  return [
+    { label: 'Habitaciones', local: d.rooms.length, cloud: live(rooms).length },
+    { label: 'Catálogo', local: d.catalog.length, cloud: live(cat).length },
+    { label: 'Reservaciones', local: d.reservations.length, cloud: live(res).length },
+    { label: 'Total de reservaciones ($)', local: sum(d.reservations.map((r) => r.total)), cloud: sum(live(res).map((r) => Number(r.total))) },
+    { label: 'Pagos', local: payments.length, cloud: live(pays).length },
+    { label: 'Total de pagos ($)', local: sum(payments.map((p) => p.amount)), cloud: sum(live(pays).map((p) => Number(p.amount))) },
+    { label: 'Cotizaciones', local: d.quotes.length, cloud: live(quotes).length },
+    { label: 'Solicitudes', local: d.inquiries.length, cloud: live(inq).length },
+  ]
+}
