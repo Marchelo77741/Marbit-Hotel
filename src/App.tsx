@@ -12,6 +12,8 @@ import SettingsView from './components/SettingsView'
 import { dueReminders, reminderBody, showNotification, type ReminderKind } from './lib/reminders'
 import { getData, markReminderSent, useData } from './store'
 import { startAutoBackup } from './lib/remoteBackup'
+import { cloudEnabled } from './lib/supabase'
+import { SyncBadge } from './components/CloudSync'
 import { logoDataUrl } from './lib/brand'
 import type { DocRequest, Nav, Prefill, Tab } from './nav'
 
@@ -85,7 +87,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    startAutoBackup()
+    if (!cloudEnabled) startAutoBackup() // con nube, los respaldos y la sincronización los hace Supabase
   }, [])
 
   useEffect(() => {
@@ -103,7 +105,7 @@ export default function App() {
   const badge = (id: Tab) => (id === 'solicitudes' && newInquiries > 0 ? ` (${newInquiries})` : '')
 
   const needsBackup = useMemo(() => {
-    if (data.reservations.length === 0) return false
+    if (cloudEnabled || data.reservations.length === 0) return false
     if (!data.lastBackup) return true
     return Date.now() - new Date(data.lastBackup).getTime() > 7 * 86_400_000
   }, [data.reservations.length, data.lastBackup])
@@ -125,6 +127,7 @@ export default function App() {
             </button>
           ))}
         </nav>
+        <SyncBadge nav={nav} />
       </header>
 
       {needsBackup && (

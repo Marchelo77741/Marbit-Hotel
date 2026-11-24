@@ -1,6 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { cloudEnabled, supabase } from '../lib/supabase'
+import { CloudScope } from './CloudSync'
 
 type Mode = 'entrar' | 'crear' | 'olvide'
 
@@ -125,5 +126,5 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   if (loading) return <Shell><p className="muted">Cargando…</p></Shell>
   if (!session) return <Login />
   if (!tenant) return <Onboarding />
-  return <>{children}</>
+  return <CloudScope>{children}</CloudScope>
 }

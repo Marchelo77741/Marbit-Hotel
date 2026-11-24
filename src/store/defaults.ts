@@ -106,8 +106,7 @@ export function emptyData(): AppData {
   }
 }
 
-export function normalizeData(raw: unknown): AppData {
-  const base = emptyData()
+export function normalizeData(raw: unknown, base: AppData = emptyData()): AppData {
   if (!raw || typeof raw !== 'object') return base
   const d = raw as Partial<AppData>
   // los datos anteriores a la sincronización no traen fecha de modificación: se les da una fija (igual en todos los dispositivos)
@@ -115,15 +114,15 @@ export function normalizeData(raw: unknown): AppData {
     l.map((x) => (x.updatedAt ? x : { ...x, updatedAt: fallback(x) }))
   return {
     version: 1,
-    rooms: stamp(Array.isArray(d.rooms) && d.rooms.length > 0 ? d.rooms : base.rooms, () => EPOCH),
+    rooms: stamp(Array.isArray(d.rooms) && (d.rooms.length > 0 || base.rooms.length === 0) ? d.rooms : base.rooms, () => EPOCH),
     reservations: stamp(
       (Array.isArray(d.reservations) ? d.reservations : []).map((r) => ({ ...r, payments: r.payments ?? [] })),
       (r) => r.createdAt || EPOCH,
     ),
-    catalog: stamp(Array.isArray(d.catalog) && d.catalog.length > 0 ? d.catalog : base.catalog, () => EPOCH),
+    catalog: stamp(Array.isArray(d.catalog) && (d.catalog.length > 0 || base.catalog.length === 0) ? d.catalog : base.catalog, () => EPOCH),
     quotes: stamp(Array.isArray(d.quotes) ? d.quotes : [], (q) => q.createdAt || EPOCH),
     inquiries: stamp(Array.isArray(d.inquiries) ? d.inquiries : [], (q) => q.createdAt || EPOCH),
-    settings: { ...defaultSettings, ...(d.settings ?? {}) },
+    settings: { ...base.settings, ...(d.settings ?? {}) },
     settingsAt: d.settingsAt && typeof d.settingsAt === 'object' ? d.settingsAt : {},
     tombstones: d.tombstones && typeof d.tombstones === 'object' ? d.tombstones : {},
     sentReminders: Array.isArray(d.sentReminders) ? d.sentReminders : [],
@@ -131,3 +130,23 @@ export function normalizeData(raw: unknown): AppData {
   }
 }
 
+
+export function blankSite(): SiteContent {
+  return {
+    hero: { eyebrow: '', title: '', subtitle: '', slides: [] },
+    gallery: [],
+    testimonials: [],
+    contact: { address: '', phone: '', whatsapp: '', email: '', hours: '', mapQuery: '', facebook: '', instagram: '', tiktok: '' },
+  }
+}
+
+/** Posada nueva en la nube: sin habitaciones ni contenido de otra posada. */
+export function blankCloudData(name: string): AppData {
+  const base = emptyData()
+  return {
+    ...base,
+    rooms: [],
+    catalog: [],
+    settings: { ...defaultSettings, businessName: name, address: '', phone: '', site: blankSite() },
+  }
+}
