@@ -44,10 +44,13 @@ export default async (req: Request, context: Context) => {
       headers: { 'Content-Type': 'application/json', apikey: anon },
       body: JSON.stringify({ p_key: key }),
     })
+    if (!r.ok) console.error(`public_site ${key}: HTTP ${r.status} (revisa SUPABASE_URL y SUPABASE_ANON_KEY)`)
     data = r.ok ? await r.json() : null
-  } catch {
+  } catch (e) {
+    console.error(`public_site ${key}: ${e}`)
     data = null
   }
+  if (!data) console.error(`public_site ${key}: sin datos (dominio o apodo no registrado)`)
   if (!data) return new Response(renderNotFound(), { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } })
 
   return new Response(renderSite(data, { supaUrl, anonKey: anon, siteKey: key, canonical }), {
